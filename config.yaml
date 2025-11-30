@@ -1,0 +1,15 @@
+# config.yaml
+kafka:
+  bootstrap_servers: "localhost:9092"
+  topic: "news_tones"
+
+producer:
+  fetch_interval_seconds: 30
+  start_date: "2020-01-01"
+
+gdelt:
+  country: "GM"
+  language: "GERMAN"
+
+supabase:
+  news_tones_table: "gdelt_daily_tone"
