@@ -35,7 +35,7 @@ class NewsProducer:
             bootstrap_servers=config['kafka']['bootstrap_servers'],
             value_serializer=lambda v: json.dumps(v).encode('utf-8')
         )
-        self.topic = config['kafka']['topic']
+        self.topic = config['kafka']['news_topic']
         
     def get_existing_dates(self):
         """Fetch all dates we already have in the database"""
