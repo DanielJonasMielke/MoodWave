@@ -106,7 +106,7 @@ class TrackProducer:
 
     # ==================== SPOTIFY CHARTS ====================
 
-    def fetch_daily_chart(self, date_str: str) -> list[dict] | None:
+    def fetch_daily_charts(self, date_str: str) -> list[dict] | None:
         """Fetch Spotify chart data for a specific date"""
         url = f"https://charts-spotify-com-service.spotify.com/auth/v0/charts/{self.chart_type}/{date_str}"
 
@@ -303,7 +303,7 @@ class TrackProducer:
         print(f"\nProcessing date: {date_str}")
 
         # Fetch chart for this date
-        chart_data = self.fetch_daily_chart(date_str)
+        chart_data = self.fetch_daily_charts(date_str)
         if not chart_data:
             return [], []
 
