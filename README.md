@@ -31,14 +31,66 @@ This system investigates whether daily music listening patterns reflect the mood
 4. **Storage**
    - **Supabase** stores raw data and correlation results
 
+5. **Monitoring**
+   - **Prometheus** collects metrics from Kafka and Spark
+   - **Grafana** provides dashboards for pipeline observability
+
 ## Tech Stack
 
 - **uv** - Python package management
 - **Kafka** - Event streaming
 - **Spark** - Stream processing
 - **Supabase** - Data warehouse
+- **Prometheus** - Metrics collection
+- **Grafana** - Monitoring dashboards
 - Python for producers/scrapers
+
+## Getting Started
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Python 3.13+
+- uv package manager
+
+### Start Infrastructure
+
+```bash
+cd kafka-single-node
+docker-compose up -d
+```
+
+This starts:
+- Zookeeper (port 2181)
+- Kafka (port 9092)
+- Kafka UI (http://localhost:8081)
+- Prometheus (http://localhost:9090)
+- Grafana (http://localhost:3000)
+
+### Access Monitoring
+
+1. **Grafana**: http://localhost:3000
+   - Username: `admin`
+   - Password: `moodwave`
+
+2. **Pre-configured Dashboards**:
+   - **Kafka Overview**: Broker metrics, partition health, request rates
+   - **MoodWave Pipeline**: Topic-specific metrics for `news_tones`, `daily_charts`, `musical_features`
+
+3. **Prometheus**: http://localhost:9090
+   - Query Kafka JMX metrics directly
+   - Verify scrape targets at `/targets`
+
+### Monitored Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `kafka_server_brokertopicmetrics_messagesinpersec_total` | Messages published per topic |
+| `kafka_server_brokertopicmetrics_bytesinpersec_total` | Data throughput per topic |
+| `kafka_controller_kafkacontroller_activecontrollercount` | Active controller health |
+| `kafka_server_replicamanager_partitioncount` | Total partitions |
+| `kafka_server_replicamanager_underreplicatedpartitions` | Replication issues |
 
 ## Project Status
 
-Initial setup phase - code coming soon
+Initial setup phase - core infrastructure and monitoring operational

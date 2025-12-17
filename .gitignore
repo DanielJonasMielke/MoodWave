@@ -9,4 +9,13 @@ wheels/
 # Virtual environments
 .venv
 
+# Environment variables
 .env
+
+# Downloaded binaries (auto-downloaded by Docker)
+*.jar
+kafka-single-node/monitoring/jmx-exporter/jmx_prometheus_javaagent.jar
+
+# Docker volumes
+prometheus_data/
+grafana_data/

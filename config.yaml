@@ -24,3 +24,14 @@ supabase:
   regional_charts_table: "spotify_regional_charts"
   viral_charts_table: "spotify_viral_charts"
   track_features_table: "track_features"
+
+# Monitoring Framework Configuration
+monitoring:
+  prometheus:
+    url: "http://localhost:9090"
+  grafana:
+    url: "http://localhost:3000"
+    admin_user: "admin"
+    admin_password: "moodwave"
+  kafka_jmx:
+    port: 9101

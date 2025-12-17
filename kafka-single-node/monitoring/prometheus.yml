@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Kafka JMX metrics via JMX exporter sidecar
+  - job_name: "kafka"
+    static_configs:
+      - targets: ["kafka-jmx-exporter:9072"]
+        labels:
+          service: "kafka-broker"
+
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
