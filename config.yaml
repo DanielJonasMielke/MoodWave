@@ -1,7 +1,9 @@
 # config.yaml
 kafka:
   bootstrap_servers: "localhost:9092"
-  topic: "news_tones"
+  news_topic: "news_tones"
+  charts_topic: "daily_charts"
+  features_topic: "musical_features"
 
 producer:
   fetch_interval_seconds: 30
@@ -11,5 +13,14 @@ gdelt:
   country: "GM"
   language: "GERMAN"
 
+spotify:
+  chart_type: "regional-de-daily"
+
+rapidapi:
+  host: "track-analysis.p.rapidapi.com"
+
 supabase:
   news_tones_table: "gdelt_daily_tone"
+  regional_charts_table: "spotify_regional_charts"
+  viral_charts_table: "spotify_viral_charts"
+  track_features_table: "track_features"

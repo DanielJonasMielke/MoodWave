@@ -35,7 +35,7 @@ class NewsProducer:
             bootstrap_servers=config['kafka']['bootstrap_servers'],
             value_serializer=lambda v: json.dumps(v).encode('utf-8')
         )
-        self.topic = config['kafka']['topic']
+        self.topic = config['kafka']['news_topic']
         
     def get_existing_dates(self):
         """Fetch all dates we already have in the database"""
@@ -96,7 +96,7 @@ class NewsProducer:
         }
         
         self.producer.send(self.topic, value=message)
-        print(f"→ Published to Kafka: {date_str}")
+        print(f"-> Published to Kafka: {date_str}")
 
     def run(self):
         """Main loop to fetch and publish news tones"""
