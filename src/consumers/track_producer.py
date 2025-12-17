@@ -275,7 +275,7 @@ class TrackProducer:
             "timestamp": datetime.now().isoformat(),
         }
         self.producer.send(self.charts_topic, value=message)
-        print(f"→ Published {len(charts_data)} tracks to {self.charts_topic}")
+        print(f"-> Published {len(charts_data)} tracks to {self.charts_topic}")
 
     def publish_features(self, features_data: list[dict]):
         """Publish song features to Kafka"""
@@ -288,7 +288,7 @@ class TrackProducer:
             "timestamp": datetime.now().isoformat(),
         }
         self.producer.send(self.features_topic, value=message)
-        print(f"→ Published {len(features_data)} features to {self.features_topic}")
+        print(f"-> Published {len(features_data)} features to {self.features_topic}")
 
     # ==================== MAIN PROCESSING ====================
 
@@ -325,9 +325,9 @@ class TrackProducer:
             if features:
                 new_features.append(features)
                 existing_song_ids.add(track["track_id"])  # Mark as processed
-                print(" ✓")
+                print(" [OK]")
             else:
-                print(" ✗")
+                print(" [FAIL]")
 
             # Rate limiting
             time.sleep(0.5)
@@ -337,7 +337,7 @@ class TrackProducer:
     def run(self):
         """Main loop to fetch charts, features, and publish to Kafka"""
         print("=" * 60)
-        print("🎵 Starting TrackProducer...")
+        print("Starting TrackProducer...")
         print(f"   Chart type: {self.chart_type}")
         print(f"   Start date: {self.start_date}")
         print(f"   Interval: {self.time_interval}s")
@@ -387,7 +387,7 @@ class TrackProducer:
 
                 # Flush Kafka producer
                 self.producer.flush()
-                print(f"\n⏰ Sleeping for {self.time_interval}s...")
+                print(f"\nSleeping for {self.time_interval}s...")
 
             except Exception as e:
                 print(f"Error in main loop: {e}")

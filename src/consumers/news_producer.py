@@ -96,7 +96,7 @@ class NewsProducer:
         }
         
         self.producer.send(self.topic, value=message)
-        print(f"→ Published to Kafka: {date_str}")
+        print(f"-> Published to Kafka: {date_str}")
 
     def run(self):
         """Main loop to fetch and publish news tones"""
