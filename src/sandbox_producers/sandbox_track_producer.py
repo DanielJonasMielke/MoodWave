@@ -265,11 +265,12 @@ class SandboxTrackProducer:
         self.producer.flush()
         print(f"    -> Published {len(charts_data)} tracks to Kafka")
     
-    def publish_single_feature(self, feature: dict):
+    def publish_single_feature(self, feature: dict, chart_date: str):
         """Publish ONE feature to Kafka immediately (NO BATCHING)"""
         message = {
             "track_id": feature.get('track_id'),
             "track_name": feature.get('track_name'),
+            "chart_date": chart_date,
             "artists": feature.get('artists'),
             "track_uri": feature.get('track_uri'),
             "release_date": feature.get('release_date'),
@@ -356,7 +357,7 @@ class SandboxTrackProducer:
             
             if features:
                 # Stream immediately to Kafka (NO BATCHING)
-                self.publish_single_feature(features)
+                self.publish_single_feature(features, date_str)
                 existing_song_ids.add(track["track_id"])
                 print("[OK]")
             else:
