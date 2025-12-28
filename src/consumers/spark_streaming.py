@@ -63,6 +63,8 @@ def create_supabase_client() -> Client:
     print(f"-> Connected to Supabase: {supabase_url[:30]}...")
     print()
 
+    return supabase
+
 def create_stream_readers(config: dict, spark: SparkSession):
     print("Setting up Kafka stream readers...")
     
@@ -143,6 +145,7 @@ def parse_all_topics_json(news_stream, charts_stream, features_stream):
     features_schema = StructType([
         StructField("track_id", StringType(), True),
         StructField("track_name", StringType(), True),
+        StructField("chart_date", StringType(), True),
         StructField("artists", StringType(), True),
         StructField("track_uri", StringType(), True),
         StructField("release_date", StringType(), True),
