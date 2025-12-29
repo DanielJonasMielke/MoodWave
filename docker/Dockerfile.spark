@@ -1,0 +1,24 @@
+# Start from official Spark image with Python
+FROM apache/spark:3.5.0-python3
+
+# Switch to root to install packages
+USER root
+
+# Install additional Python dependencies directly (no uv needed)
+RUN pip install supabase pyyaml python-dotenv httpx[http2]
+
+# Set working directory
+WORKDIR /app
+
+# Copy your consumer code and config
+COPY src/consumers/spark_streaming.py ./
+COPY config.yaml ./
+COPY .env ./
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Use spark-submit instead of python
+CMD ["/opt/spark/bin/spark-submit", \
+     "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0", \
+     "spark_streaming.py"]

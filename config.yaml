@@ -36,4 +36,4 @@ sandbox:
   simulation_interval_seconds: 180
   api_delay_range_seconds: [0.2, 0.6]
   api_error_probability: 0.30
-  consumer_trigger_interval_seconds: 10 # 10 seconds for testing
+  consumer_trigger_interval_seconds: 20

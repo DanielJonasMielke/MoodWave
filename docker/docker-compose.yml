@@ -32,3 +32,18 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+
+  spark-consumer:
+    build:
+      context: .. # Build from parent directory
+      dockerfile: docker/Dockerfile.spark
+    container_name: spark-consumer
+    depends_on:
+      - kafka
+    volumes:
+      - ../src:/app/src # Mount your code for live updates
+      - ../config.yaml:/app/config.yaml
+      - ../.env:/app/.env
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092

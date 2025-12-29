@@ -34,6 +34,9 @@ def load_config() -> dict:
     config_path = os.environ.get("CONFIG_PATH", "config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
+        # Override Kafka bootstrap servers from environment if set (for Docker)
+        if os.getenv('KAFKA_BOOTSTRAP_SERVERS'):
+            config['kafka']['bootstrap_servers'] = os.getenv('KAFKA_BOOTSTRAP_SERVERS')
     
     print("\n" + "=" * 70)
     print("MOODWAVE SPARK KAFKA CONSUMER")
