@@ -126,6 +126,21 @@ class SandboxTrackProducer:
         except Exception as e:
             print(f"Error fetching existing song IDs from SANDBOX: {e}")
             return set()
+        
+    def get_existing_features(self, track_ids: list[str]) -> dict[str, dict]:
+        """Fetch existing features from SANDBOX database for given track IDs"""
+        try:
+            response = (
+                self.sandbox_supabase.table(self.track_features_table)
+                .select("*")
+                .in_("track_id", track_ids)
+                .execute()
+            )
+            # Return as dict with track_id as key for easy lookup
+            return {row["track_id"]: row for row in response.data}
+        except Exception as e:
+            print(f"Error fetching existing features from SANDBOX: {e}")
+            return {}
     
     # ==================== SPOTIFY CHARTS (REUSED FROM ORIGINAL) ====================
     
@@ -244,7 +259,7 @@ class SandboxTrackProducer:
             
             # Wait before retry (if not last attempt)
             if attempt < 3:
-                time.sleep(5)
+                time.sleep(3)
         
         # Failed after 3 attempts - log it
         self.log_failed_feature(track, date_str, "max_retries")
@@ -330,16 +345,33 @@ class SandboxTrackProducer:
         
         # 3. Get existing song IDs from SANDBOX database
         existing_song_ids = self.get_existing_song_ids()
-        
-        # 4. Find tracks needing features
+
+        # 4. Separate tracks into existing vs new
+        tracks_with_existing_features = [
+            track for track in chart_data
+            if track.get("track_id") and track["track_id"] in existing_song_ids
+        ]
+
         tracks_needing_features = [
             track for track in chart_data
             if track.get("track_id") and track["track_id"] not in existing_song_ids
         ]
-        
+
+        print(f"    Songs with existing features: {len(tracks_with_existing_features)}")
         print(f"    Songs needing features: {len(tracks_needing_features)}")
-        
-        # 5. Fetch and stream features ONE BY ONE
+
+        # 5. Republish existing features from SANDBOX database
+        if tracks_with_existing_features:
+            existing_track_ids = [t["track_id"] for t in tracks_with_existing_features]
+            existing_features = self.get_existing_features(existing_track_ids)
+            
+            for track in tracks_with_existing_features:
+                track_id = track["track_id"]
+                if track_id in existing_features:
+                    self.publish_single_feature(existing_features[track_id], date_str)
+                    print(f"    [REPUBLISHED] {track['track_name'][:40]}")
+
+        # 6. Fetch and stream NEW features ONE BY ONE
         for i, track in enumerate(tracks_needing_features):
             # Check if time window has closed
             if time.time() >= day_end_timestamp:

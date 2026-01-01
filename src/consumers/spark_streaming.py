@@ -192,6 +192,7 @@ def create_stream_readers(config: dict, spark: SparkSession):
         .option("kafka.bootstrap.servers", kafka_servers) \
         .option("subscribe", news_topic) \
         .option("startingOffsets", "earliest") \
+        .option("failOnDataLoss", "false") \
         .load()
     print(f"-> News stream connected: {news_topic}")
     
@@ -201,6 +202,7 @@ def create_stream_readers(config: dict, spark: SparkSession):
         .option("kafka.bootstrap.servers", kafka_servers) \
         .option("subscribe", charts_topic) \
         .option("startingOffsets", "earliest") \
+        .option("failOnDataLoss", "false") \
         .load()
     print(f"-> Charts stream connected: {charts_topic}")
     
@@ -210,6 +212,7 @@ def create_stream_readers(config: dict, spark: SparkSession):
         .option("kafka.bootstrap.servers", kafka_servers) \
         .option("subscribe", features_topic) \
         .option("startingOffsets", "earliest") \
+        .option("failOnDataLoss", "false") \
         .load()
     print(f"-> Features stream connected: {features_topic}")
     print()

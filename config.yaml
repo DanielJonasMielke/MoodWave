@@ -27,13 +27,13 @@ supabase:
   track_features_daily_avg_table: "track_features_daily_avg"
 
 consumer:
-  trigger_interval_seconds: 300
+  trigger_interval_seconds: 300 # Production
   checkpoint_location: "/tmp/spark_checkpoints"
 
 sandbox:
   enabled: true
   start_date: "2020-01-01"
-  simulation_interval_seconds: 180
-  api_delay_range_seconds: [0.2, 0.6]
+  simulation_interval_seconds: 60
+  api_delay_range_seconds: [0.01, 0.2]
   api_error_probability: 0.30
-  consumer_trigger_interval_seconds: 20
+  consumer_trigger_interval_seconds: 10
