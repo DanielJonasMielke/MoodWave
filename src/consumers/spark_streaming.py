@@ -16,7 +16,7 @@ import yaml
 from dotenv import load_dotenv
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
-    col, from_json, avg, count, lit, to_timestamp, concat, window, explode
+    from_json, count, lit, to_timestamp, concat, explode, col, exp, sum as spark_sum, coalesce
 )
 from pyspark.sql.types import (
     StructType, StructField, StringType, DoubleType, 
@@ -489,26 +489,41 @@ def create_watermarked_features_stream(features_parsed: DataFrame) -> DataFrame:
 
 def create_daily_aggregation(watermarked_df: DataFrame) -> DataFrame:
     """
-    Aggregate musical features by chart_date.
+    Aggregate musical features by chart_date with rank-based weighting.
     
-    Calculates:
-    - Average of all numeric feature columns
-    - track_count: number of distinct tracks
-    - reliability_score: track_count / 200.0
+    Weight calculation:
+    - Rank decay: e^(-rank/100)
+    - Days on chart decay: e^(-days_on_chart/80)
+    - Movement factor: (1 + delta/500) where delta = previous_rank - rank
     """
     
-    aggregated_df = watermarked_df.groupBy("chart_date").agg(
-        avg("tempo").alias("avg_tempo"),
-        avg("duration").alias("avg_duration"),
-        avg("energy").alias("avg_energy"),
-        avg("danceability").alias("avg_danceability"),
-        avg("happiness").alias("avg_happiness"),
-        avg("acousticness").alias("avg_acousticness"),
-        avg("instrumentalness").alias("avg_instrumentalness"),
-        avg("liveness").alias("avg_liveness"),
-        avg("speechiness").alias("avg_speechiness"),
-        avg("loudness_db").alias("avg_loudness_db"),
-        avg("popularity").alias("avg_popularity"),
+    # Step 1: Calculate delta and handle NULL previous_rank
+    weighted_df = watermarked_df.withColumn(
+        "delta",
+        coalesce(col("previous_rank") - col("rank"), lit(0))
+    )
+    
+    # Step 2: Calculate complete weight
+    weighted_df = weighted_df.withColumn(
+        "weight",
+        exp(-col("rank") / lit(100.0)) * 
+        exp(-col("days_on_chart") / lit(80.0)) * 
+        (lit(1.0) + col("delta") / lit(500.0))
+    )
+    
+    # Step 3: Calculate weighted averages
+    aggregated_df = weighted_df.groupBy("chart_date").agg(
+        (spark_sum(col("tempo") * col("weight")) / spark_sum(col("weight"))).alias("avg_tempo"),
+        (spark_sum(col("duration") * col("weight")) / spark_sum(col("weight"))).alias("avg_duration"),
+        (spark_sum(col("energy") * col("weight")) / spark_sum(col("weight"))).alias("avg_energy"),
+        (spark_sum(col("danceability") * col("weight")) / spark_sum(col("weight"))).alias("avg_danceability"),
+        (spark_sum(col("happiness") * col("weight")) / spark_sum(col("weight"))).alias("avg_happiness"),
+        (spark_sum(col("acousticness") * col("weight")) / spark_sum(col("weight"))).alias("avg_acousticness"),
+        (spark_sum(col("instrumentalness") * col("weight")) / spark_sum(col("weight"))).alias("avg_instrumentalness"),
+        (spark_sum(col("liveness") * col("weight")) / spark_sum(col("weight"))).alias("avg_liveness"),
+        (spark_sum(col("speechiness") * col("weight")) / spark_sum(col("weight"))).alias("avg_speechiness"),
+        (spark_sum(col("loudness_db") * col("weight")) / spark_sum(col("weight"))).alias("avg_loudness_db"),
+        (spark_sum(col("popularity") * col("weight")) / spark_sum(col("weight"))).alias("avg_popularity"),
         count("track_id").alias("track_count")
     ).withColumn(
         "reliability_score",
