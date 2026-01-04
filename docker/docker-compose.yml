@@ -44,6 +44,14 @@ services:
       - ../src:/app/src # Mount your code for live updates
       - ../config.yaml:/app/config.yaml
       - ../.env:/app/.env
+      - spark-tmp:/tmp # Persistent volume for Spark temp files
+    tmpfs:
+      - /dev/shm:size=2g # Shared memory for Spark
     environment:
       - CONFIG_PATH=/app/config.yaml
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SPARK_LOCAL_DIRS=/tmp/spark-temp
+      - SPARK_WORKER_DIR=/tmp/spark-work
+
+volumes:
+  spark-tmp:

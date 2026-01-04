@@ -145,55 +145,45 @@ class SandboxTrackProducer:
     # ==================== SPOTIFY CHARTS (REUSED FROM ORIGINAL) ====================
     
     def fetch_daily_charts(self, date_str: str) -> list[dict] | None:
-        """Fetch Spotify chart data for a specific date"""
-        url = f"https://charts-spotify-com-service.spotify.com/auth/v0/charts/{self.chart_type}/{date_str}"
-        
+        """Fetch chart data from ORIGINAL database for a specific date"""
         try:
-            response = self.session.get(url)
-            response.raise_for_status()
-            data = response.json()
+            response = (
+                self.original_supabase.table("spotify_regional_charts")
+                .select("*")
+                .eq("chart_date", date_str)
+                .execute()
+            )
+            
+            if not response.data:
+                print(f"    {date_str}: No chart data found in database")
+                return None
             
             tracks = []
-            for entry in data.get("entries", []):
-                meta = entry.get("trackMetadata", {})
-                chart_data = entry.get("chartEntryData", {})
-                
-                track_uri = meta.get("trackUri", "")
+            for row in response.data:
+                track_uri = row.get("track_uri", "")
                 track_id = track_uri.split(":")[-1] if track_uri else None
                 
                 tracks.append({
-                    "rank": chart_data.get("currentRank"),
-                    "previous_rank": chart_data.get("previousRank"),
-                    "peak_rank": chart_data.get("peakRank"),
-                    "peak_date": chart_data.get("peakDate"),
-                    "appear_on_chart": chart_data.get("appearOnChartDayCount"),
-                    "track_name": meta.get("trackName"),
+                    "rank": row.get("rank"),
+                    "previous_rank": row.get("previous_rank"),
+                    "peak_rank": row.get("peak_rank"),
+                    "peak_date": row.get("peak_date"),
+                    "appear_on_chart": row.get("appear_on_chart"),
+                    "track_name": row.get("track_name"),
                     "track_id": track_id,
                     "track_uri": track_uri,
-                    "artists": ", ".join(
-                        [a.get("name", "") for a in meta.get("artists", [])]
-                    ),
-                    "artist_uris": ", ".join(
-                        [a.get("spotifyUri", "") for a in meta.get("artists", [])]
-                    ),
-                    "release_date": meta.get("releaseDate"),
+                    "artists": row.get("artists"),
+                    "artist_uris": row.get("artist_uris"),
+                    "release_date": row.get("release_date"),
                     "chart_date": date_str,
-                    "chart_type": self.chart_type,
+                    "chart_type": row.get("chart_type"),
                 })
             
-            print(f"    {date_str}: fetched {len(tracks)} tracks")
+            print(f"    {date_str}: fetched {len(tracks)} tracks from database")
             return tracks
         
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 401:
-                print(f"    {date_str}: Auth failed - bearer token may be expired")
-            elif e.response.status_code == 404:
-                print(f"    {date_str}: Chart not found")
-            else:
-                print(f"    {date_str}: HTTP Error - {e}")
-            return None
         except Exception as e:
-            print(f"    {date_str}: Error - {e}")
+            print(f"    {date_str}: Database error - {e}")
             return None
     
     # ==================== FAKE API (ORIGINAL DATABASE) ====================
@@ -209,7 +199,6 @@ class SandboxTrackProducer:
                 .select('*')\
                 .eq('track_id', track_id)\
                 .execute()
-            
             if not response.data:
                 # Track doesn't exist - skip immediately (no retry)
                 return None, False, "not_found"
@@ -246,7 +235,7 @@ class SandboxTrackProducer:
         Logs failures after 3 attempts.
         """
         track_id = track.get('track_id')
-        
+
         for attempt in range(1, 4):
             features, success, reason = self.fetch_features_from_fake_api(track_id, attempt)
             
