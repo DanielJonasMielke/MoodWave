@@ -11,7 +11,7 @@ interface DataInfoProps {
 
 const DataInfo = ({ data, selectedFeatureConfig }: DataInfoProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Data Points Card */}
       <div className="stat-card group">
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-purple-500/10 blur-2xl group-hover:bg-purple-500/20 transition-all duration-500" />

@@ -4,7 +4,7 @@ const Header = () => {
   return (
     <div className="mb-8">
       <div className="flex items-center gap-4 mb-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-purple-500/25">
+        <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-purple-500/25">
           <svg
             className="w-6 h-6 text-white"
             fill="none"
@@ -32,11 +32,11 @@ const Header = () => {
       {/* Legend hints */}
       <div className="flex items-center gap-6 mt-6 pt-6 border-t border-white/5">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-1 rounded-full bg-gradient-to-r from-gray-400 to-gray-600" />
+          <div className="w-8 h-1 rounded-full bg-linear-to-r from-gray-400 to-gray-600" />
           <span className="text-xs text-white/50">News Tone</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-1 rounded-full bg-gradient-to-r from-purple-400 to-cyan-400" />
+          <div className="w-8 h-1 rounded-full bg-linear-to-r from-purple-400 to-cyan-400" />
           <span className="text-xs text-white/50">Selected Feature</span>
         </div>
       </div>

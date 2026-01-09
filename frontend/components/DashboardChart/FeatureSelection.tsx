@@ -11,12 +11,12 @@ const FeatureSelection = ({
   setSelectedFeature,
 }: FeatureSelectionProps) => {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div className="flex flex-col gap-2">
       {MUSICAL_FEATURES.map(({ key, label, color }) => (
         <button
           key={key}
           onClick={() => setSelectedFeature(key)}
-          className={`feature-btn cursor-pointer ${
+          className={`feature-btn cursor-pointer text-left ${
             selectedFeature === key ? "active" : ""
           }`}
           style={
@@ -28,11 +28,15 @@ const FeatureSelection = ({
               : {}
           }
         >
-          <span className="relative z-10 flex items-center justify-center gap-2">
-            {selectedFeature === key && (
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            )}
-            {label}
+          <span className="relative z-10 flex items-center gap-3">
+            <span 
+              className="w-2 h-2 rounded-full shrink-0 transition-all duration-200"
+              style={{ 
+                backgroundColor: selectedFeature === key ? 'white' : color,
+                boxShadow: selectedFeature === key ? 'none' : `0 0 8px ${color}50`
+              }}
+            />
+            <span className="truncate">{label}</span>
           </span>
         </button>
       ))}

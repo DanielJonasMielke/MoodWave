@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import DashboardChart from "../../components/DashboardChart";
 import {
@@ -51,6 +54,7 @@ async function getData(): Promise<ChartDataPoint[]> {
           avg_speechiness: features.avg_speechiness,
           avg_loudness_db: features.avg_loudness_db,
           avg_popularity: features.avg_popularity,
+          reliability_score: features.reliability_score,
         }),
       };
     })
@@ -59,8 +63,39 @@ async function getData(): Promise<ChartDataPoint[]> {
   return combinedData;
 }
 
-export default async function Home() {
-  const data = await getData();
+export default function Home() {
+  const [data, setData] = useState<ChartDataPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Initial data fetch
+    const fetchData = async () => {
+      try {
+        const newData = await getData();
+        setData(newData);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Set up interval to refresh data every 60 seconds
+    const intervalId = setInterval(fetchData, 60000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <main className="relative min-h-screen z-10 flex items-center justify-center">
+        <div className="text-white/70 text-xl">Loading...</div>
+      </main>
+    );
+  }
 
   return (
     <>
@@ -80,7 +115,7 @@ export default async function Home() {
       />
 
       <main className="relative min-h-screen z-10">
-        <div className="container mx-auto px-4 py-16 max-w-7xl">
+        <div className="container mx-auto px-4 py-16 max-w-3/4">
           {/* Header Section */}
           <header className="mb-16 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-6 backdrop-blur-sm">
@@ -106,9 +141,9 @@ export default async function Home() {
 
             {/* Decorative line */}
             <div className="mt-10 flex items-center justify-center gap-4">
-              <div className="w-24 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+              <div className="w-24 h-px bg-linear-to-r from-transparent via-purple-500/50 to-transparent" />
               <div className="w-2 h-2 rounded-full bg-purple-500/50" />
-              <div className="w-24 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+              <div className="w-24 h-px bg-linear-to-r from-transparent via-cyan-500/50 to-transparent" />
             </div>
           </header>
 

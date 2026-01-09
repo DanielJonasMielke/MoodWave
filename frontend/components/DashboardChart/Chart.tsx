@@ -33,7 +33,7 @@ const Chart = ({
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
         data={chartData}
-        margin={{ top: 20, right: 60, left: 20, bottom: 20 }}
+        margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
       >
         <defs>
           <linearGradient id="toneGradient" x1="0" y1="0" x2="1" y2="0">
