@@ -461,6 +461,40 @@ def start_raw_data_streams(
 # STREAM 2: DAILY FEATURE AGGREGATIONS (UPDATE MODE WITH WATERMARK)
 # =============================================================================
 
+def create_watermarked_charts_stream(charts_parsed: DataFrame) -> DataFrame:
+    """
+    Create watermarked stream for charts data.
+    Explodes the tracks array and adds event_time for joining.
+    """
+    # First, explode the tracks array to get individual track rows
+    exploded_df = charts_parsed.select(
+        col("chart_date"),
+        col("chart_type"),
+        explode(col("tracks")).alias("track")
+    )
+    
+    # Extract track fields from the struct
+    charts_flat = exploded_df.select(
+        col("chart_date"),
+        col("chart_type"),
+        col("track.rank").alias("rank"),
+        col("track.previous_rank").alias("previous_rank"),
+        col("track.peak_rank").alias("peak_rank"),
+        col("track.appear_on_chart").alias("appear_on_chart"),
+        col("track.track_uri").alias("track_uri"),
+        col("track.track_id").alias("track_id")
+    )
+    
+    # Add event_time and watermark
+    charts_with_event_time = charts_flat.withColumn(
+        "event_time",
+        to_timestamp(concat(col("chart_date"), lit(" 23:59:59")), "yyyy-MM-dd HH:mm:ss")
+    )
+    
+    watermarked_charts = charts_with_event_time.withWatermark("event_time", "1 day")
+    
+    return watermarked_charts
+
 def create_watermarked_features_stream(features_parsed: DataFrame) -> DataFrame:
     """
     Create watermarked stream for daily aggregations.
@@ -502,12 +536,18 @@ def create_daily_aggregation(watermarked_df: DataFrame) -> DataFrame:
         "delta",
         coalesce(col("previous_rank") - col("rank"), lit(0))
     )
+
+    # Note: appear_on_chart is NULL in current data, so we default to 1 day
+    weighted_df = weighted_df.withColumn(
+        "days_count",
+        coalesce(col("appear_on_chart"), lit(1))
+    )
     
     # Step 2: Calculate complete weight
     weighted_df = weighted_df.withColumn(
         "weight",
         exp(-col("rank") / lit(100.0)) * 
-        exp(-col("days_on_chart") / lit(80.0)) * 
+        exp(-col("days_count") / lit(80.0)) * 
         (lit(1.0) + col("delta") / lit(500.0))
     )
     
@@ -534,12 +574,14 @@ def create_daily_aggregation(watermarked_df: DataFrame) -> DataFrame:
 
 
 def start_daily_aggregation_stream(
+    charts_parsed: DataFrame,
     features_parsed: DataFrame,
     config: dict,
     supabase: Client
 ):
     """
     Start Stream 2: Daily feature aggregations with watermarking.
+    Joins charts and features streams, then aggregates with rank-based weighting.
     Uses Update mode to emit updated aggregations as new data arrives.
     """
     print("=" * 70)
@@ -549,12 +591,23 @@ def start_daily_aggregation_stream(
     trigger_interval = config['_trigger_interval']
     checkpoint_base = config['_checkpoint_location']
     
-    # Create watermarked stream
-    watermarked_df = create_watermarked_features_stream(features_parsed)
-    print("-> Watermark applied: 1 day on event_time (chart_date at 23:59:59)")
+    # Create watermarked streams for BOTH charts and features
+    watermarked_charts = create_watermarked_charts_stream(charts_parsed)
+    print("-> Watermark applied to charts stream")
     
-    # Create daily aggregation
-    daily_avg_df = create_daily_aggregation(watermarked_df)
+    watermarked_features = create_watermarked_features_stream(features_parsed)
+    print("-> Watermark applied to features stream")
+    
+    # JOIN the two streams on track_uri and chart_date
+    joined_df = watermarked_charts.join(
+        watermarked_features,
+        ["track_uri", "chart_date"],
+        "inner"
+    )
+    print("-> Streams joined on (track_uri, chart_date)")
+    
+    # Create daily aggregation from joined data
+    daily_avg_df = create_daily_aggregation(joined_df)
     print("-> Daily aggregation pipeline created")
     
     # Start the stream with Update mode
@@ -614,20 +667,36 @@ def main():
     # =========================================================================
     # STREAM 2: Daily Feature Aggregations (Update mode with watermark)
     # =========================================================================
-    # Note: We need a separate read from features topic for Stream 2
+    # Note: We need separate reads from BOTH topics for Stream 2
     # because we can't reuse the same stream with different output modes
+
+    # Read charts stream again for aggregation
+    charts_stream_2 = spark.readStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", config['kafka']['bootstrap_servers']) \
+        .option("subscribe", config['kafka']['charts_topic']) \
+        .option("startingOffsets", "earliest") \
+        .load()
+
+    charts_parsed_2 = charts_stream_2.select(
+        from_json(col("value").cast("string"), get_charts_schema()).alias("data")
+    ).select("data.*")
+
+    # Read features stream again for aggregation
     features_stream_2 = spark.readStream \
         .format("kafka") \
         .option("kafka.bootstrap.servers", config['kafka']['bootstrap_servers']) \
         .option("subscribe", config['kafka']['features_topic']) \
         .option("startingOffsets", "earliest") \
         .load()
-    
+
     features_parsed_2 = features_stream_2.select(
         from_json(col("value").cast("string"), get_features_schema()).alias("data")
     ).select("data.*")
-    
+
+    # Pass BOTH streams to aggregation
     daily_avg_query = start_daily_aggregation_stream(
+        charts_parsed_2,
         features_parsed_2,
         config,
         supabase
