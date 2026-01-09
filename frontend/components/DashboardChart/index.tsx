@@ -139,7 +139,7 @@ export default function DashboardChart({ data }: DashboardChartProps) {
         <div className="order-1 lg:order-2 glass-card p-6 lg:p-8 glow-border">
           <Header />
 
-          <div className="h-80 sm:h-100 lg:h-125 w-full">
+          <div className="h-72 sm:h-80 lg:h-96 w-full">
             <Chart
               chartData={chartData}
               toneRange={toneRange}

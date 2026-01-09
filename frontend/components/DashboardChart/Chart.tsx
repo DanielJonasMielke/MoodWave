@@ -33,7 +33,7 @@ const Chart = ({
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
         data={chartData}
-        margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+        margin={{ top: 10, right: 20, left: 20, bottom: 5 }}
       >
         <defs>
           <linearGradient id="toneGradient" x1="0" y1="0" x2="1" y2="0">
@@ -131,13 +131,13 @@ const Chart = ({
         />
 
         <Legend
-          wrapperStyle={{ paddingTop: "20px" }}
+          wrapperStyle={{ paddingTop: "8px" }}
           iconType="line"
           formatter={(value) => (
             <span
               style={{
                 color: "rgba(255, 255, 255, 0.8)",
-                fontSize: "16px",
+                fontSize: "14px",
                 fontWeight: 500,
               }}
             >

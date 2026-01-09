@@ -16,7 +16,7 @@ const FeatureSelection = ({
         <button
           key={key}
           onClick={() => setSelectedFeature(key)}
-          className={`feature-btn cursor-pointer text-left ${
+          className={`text-sm feature-btn cursor-pointer text-left ${
             selectedFeature === key ? "active" : ""
           }`}
           style={
@@ -29,11 +29,12 @@ const FeatureSelection = ({
           }
         >
           <span className="relative z-10 flex items-center gap-3">
-            <span 
+            <span
               className="w-2 h-2 rounded-full shrink-0 transition-all duration-200"
-              style={{ 
-                backgroundColor: selectedFeature === key ? 'white' : color,
-                boxShadow: selectedFeature === key ? 'none' : `0 0 8px ${color}50`
+              style={{
+                backgroundColor: selectedFeature === key ? "white" : color,
+                boxShadow:
+                  selectedFeature === key ? "none" : `0 0 8px ${color}50`,
               }}
             />
             <span className="truncate">{label}</span>

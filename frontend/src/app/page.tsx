@@ -115,7 +115,7 @@ export default function Home() {
       />
 
       <main className="relative min-h-screen z-10">
-        <div className="container mx-auto px-4 py-16 max-w-3/4">
+        <div className="container mx-auto px-4 py-16 max-w-[80%]">
           {/* Header Section */}
           <header className="mb-16 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-6 backdrop-blur-sm">
