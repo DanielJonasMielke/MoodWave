@@ -52,8 +52,33 @@ export default function DashboardChart({ data }: DashboardChartProps) {
   );
 
   const { toneRange, featureRange, chartData } = useMemo(() => {
+    // Filter to only show data up to the last date with musical features
+    const hasMusicalFeatures = (point: ChartDataPoint): boolean => {
+      const featureKeys: (keyof ChartDataPoint)[] = [
+        "avg_tempo",
+        "avg_duration",
+        "avg_energy",
+        "avg_danceability",
+        "avg_happiness",
+        "avg_acousticness",
+        "avg_instrumentalness",
+        "avg_liveness",
+        "avg_speechiness",
+        "avg_loudness_db",
+        "avg_popularity",
+      ];
+      return featureKeys.some(
+        (key) => point[key] !== null && point[key] !== undefined
+      );
+    };
+
+    const lastPointWithFeatures = [...data].reverse().find(hasMusicalFeatures);
+    const filteredData = lastPointWithFeatures
+      ? data.filter((d) => d.date <= lastPointWithFeatures.date)
+      : data;
+
     // Calculate news tone range
-    const toneValues = data
+    const toneValues = filteredData
       .map((d) => d.average_tone)
       .filter((v) => v !== null) as number[];
     const toneMin = Math.min(...toneValues);
@@ -61,7 +86,7 @@ export default function DashboardChart({ data }: DashboardChartProps) {
     const tonePadding = (toneMax - toneMin) * 0.1;
 
     // Calculate selected feature range
-    const featureValues = data
+    const featureValues = filteredData
       .map((d) => d[selectedFeature])
       .filter((v) => v !== null && v !== undefined) as number[];
     const featureMin = Math.min(...featureValues);
@@ -69,7 +94,7 @@ export default function DashboardChart({ data }: DashboardChartProps) {
     const featurePadding = (featureMax - featureMin) * 0.1;
 
     // Prepare chart data
-    const smoothedData = applySmoothingToData(data, smoothing);
+    const smoothedData = applySmoothingToData(filteredData, smoothing);
     const chartData = smoothedData.map((point) => ({
       date: new Date(point.date).toLocaleDateString("en-US", {
         month: "short",

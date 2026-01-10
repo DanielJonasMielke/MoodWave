@@ -488,7 +488,7 @@ def create_watermarked_charts_stream(charts_parsed: DataFrame) -> DataFrame:
     # Add event_time and watermark
     charts_with_event_time = charts_flat.withColumn(
         "event_time",
-        to_timestamp(concat(col("chart_date"), lit(" 23:59:59")), "yyyy-MM-dd HH:mm:ss")
+        to_timestamp(col("chart_date"), "yyyy-MM-dd")
     )
     
     watermarked_charts = charts_with_event_time.withWatermark("event_time", "1 day")
@@ -508,11 +508,10 @@ def create_watermarked_features_stream(features_parsed: DataFrame) -> DataFrame:
     - watermark = max(event_time) - 1 day
     """
     
-    # Convert chart_date string to timestamp at end of day (23:59:59)
-    # Format: "2020-01-01" -> "2020-01-01 23:59:59"
+    # Convert chart_date string to timestamp
     features_with_event_time = features_parsed.withColumn(
         "event_time",
-        to_timestamp(concat(col("chart_date"), lit(" 23:59:59")), "yyyy-MM-dd HH:mm:ss")
+        to_timestamp(col("chart_date"), "yyyy-MM-dd")
     )
     
     # Apply watermark: 1 day delay for late arrivals
@@ -536,18 +535,12 @@ def create_daily_aggregation(watermarked_df: DataFrame) -> DataFrame:
         "delta",
         coalesce(col("previous_rank") - col("rank"), lit(0))
     )
-
-    # Note: appear_on_chart is NULL in current data, so we default to 1 day
-    weighted_df = weighted_df.withColumn(
-        "days_count",
-        coalesce(col("appear_on_chart"), lit(1))
-    )
     
     # Step 2: Calculate complete weight
     weighted_df = weighted_df.withColumn(
         "weight",
         exp(-col("rank") / lit(100.0)) * 
-        exp(-col("days_count") / lit(80.0)) * 
+        exp(-col("appear_on_chart") / lit(80.0)) * 
         (lit(1.0) + col("delta") / lit(500.0))
     )
     
