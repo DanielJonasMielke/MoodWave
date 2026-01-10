@@ -564,7 +564,7 @@ def create_daily_aggregation(watermarked_df: DataFrame) -> DataFrame:
         (spark_sum(col("speechiness") * col("weight")) / spark_sum(col("weight"))).alias("avg_speechiness"),
         (spark_sum(col("loudness_db") * col("weight")) / spark_sum(col("weight"))).alias("avg_loudness_db"),
         (spark_sum(col("popularity") * col("weight")) / spark_sum(col("weight"))).alias("avg_popularity"),
-        count("track_id").alias("track_count")
+        count("*").alias("track_count")
     ).withColumn(
         "reliability_score",
         col("track_count") / lit(200.0)
