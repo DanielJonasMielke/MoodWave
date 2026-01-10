@@ -16,7 +16,7 @@ import yaml
 from dotenv import load_dotenv
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
-    from_json, count, lit, to_timestamp, concat, explode, col, exp, sum as spark_sum, coalesce
+    from_json, count, window, lit, to_timestamp, concat, explode, col, exp, sum as spark_sum, coalesce
 )
 from pyspark.sql.types import (
     StructType, StructField, StringType, DoubleType, 
@@ -375,7 +375,7 @@ def upsert_daily_avg_batch(batch_df: DataFrame, batch_id: int, supabase: Client)
         date_value = row["chart_date"]
         
         record = {
-            "date": date_value,
+            "date": str(date_value),
             "avg_tempo": row["avg_tempo"],
             "avg_duration": row["avg_duration"],
             "avg_energy": row["avg_energy"],
@@ -552,7 +552,7 @@ def create_daily_aggregation(watermarked_df: DataFrame) -> DataFrame:
     )
     
     # Step 3: Calculate weighted averages
-    aggregated_df = weighted_df.groupBy("chart_date").agg(
+    aggregated_df = weighted_df.groupBy(window(col("event_time"), "1 day")).agg(
         (spark_sum(col("tempo") * col("weight")) / spark_sum(col("weight"))).alias("avg_tempo"),
         (spark_sum(col("duration") * col("weight")) / spark_sum(col("weight"))).alias("avg_duration"),
         (spark_sum(col("energy") * col("weight")) / spark_sum(col("weight"))).alias("avg_energy"),
@@ -568,6 +568,9 @@ def create_daily_aggregation(watermarked_df: DataFrame) -> DataFrame:
     ).withColumn(
         "reliability_score",
         col("track_count") / lit(200.0)
+    ).withColumn(
+    "chart_date",
+    col("window.start").cast("date")  # Extract date from window start
     )
     
     return aggregated_df
@@ -603,23 +606,24 @@ def start_daily_aggregation_stream(
         watermarked_features,
         ["track_uri", "chart_date"],
         "inner"
-    )
+    ).drop(watermarked_features.event_time) \
+    .drop(watermarked_features.track_id)
     print("-> Streams joined on (track_uri, chart_date)")
     
     # Create daily aggregation from joined data
     daily_avg_df = create_daily_aggregation(joined_df)
     print("-> Daily aggregation pipeline created")
     
-    # Start the stream with Update mode
+    # Start the stream with append mode
     daily_avg_query = daily_avg_df.writeStream \
-        .outputMode("update") \
+        .outputMode("append") \
         .trigger(processingTime=f"{trigger_interval} seconds") \
         .foreachBatch(lambda df, id: upsert_daily_avg_batch(df, id, supabase)) \
         .option("checkpointLocation", f"{checkpoint_base}/stream2_daily_avg") \
         .queryName("daily_features_aggregation") \
         .start()
     
-    print(f"-> Daily aggregation stream started (Update mode)")
+    print(f"-> Daily aggregation stream started (Append mode)")
     print()
     
     return daily_avg_query
