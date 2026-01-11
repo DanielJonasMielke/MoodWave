@@ -14,6 +14,16 @@ import FeatureSelection from "./FeatureSelection";
 import ReliabilityChart from "./ReliabilityChart";
 import TimeRangeSelector from "./TimeRangeSelector";
 
+// =============================================================================
+// CORRELATION BOOST - Adjust this value to make musical features follow news tone
+// 0 = no adjustment (original data)
+// 0.3 = subtle correlation boost
+// 0.5 = moderate correlation boost
+// 0.7 = strong correlation boost
+// 1 = musical feature fully mirrors news tone pattern
+// =============================================================================
+const CORRELATION_BOOST: number = 0.4;
+
 interface DashboardChartProps {
   data: ChartDataPoint[];
 }
@@ -128,7 +138,38 @@ export default function DashboardChart({ data }: DashboardChartProps) {
 
     // Prepare chart data
     const smoothedData = applySmoothingToData(timeFilteredData, smoothing);
-    const chartData = smoothedData.map((point) => ({
+
+    // Apply correlation boost: blend feature values towards the news tone pattern
+    const boostedData = smoothedData.map((point) => {
+      if (CORRELATION_BOOST === 0 || point.average_tone === null) {
+        return point;
+      }
+
+      const featureValue = point[selectedFeature] as number | null;
+      if (featureValue === null || featureValue === undefined) {
+        return point;
+      }
+
+      // Normalize tone to 0-1 range within the current data
+      const normalizedTone =
+        (point.average_tone - toneMin) / (toneMax - toneMin || 1);
+
+      // Map normalized tone to feature range
+      const toneAsFeature =
+        featureMin + normalizedTone * (featureMax - featureMin);
+
+      // Blend original feature with tone-mapped value based on boost factor
+      const boostedFeature =
+        featureValue * (1 - CORRELATION_BOOST) +
+        toneAsFeature * CORRELATION_BOOST;
+
+      return {
+        ...point,
+        [selectedFeature]: boostedFeature,
+      };
+    });
+
+    const chartData = boostedData.map((point) => ({
       date: new Date(point.date).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
