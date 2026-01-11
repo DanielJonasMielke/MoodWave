@@ -2,6 +2,7 @@ import React from "react";
 import {
   Area,
   AreaChart,
+  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -90,6 +91,13 @@ const ReliabilityChart = ({ chartData }: ReliabilityChartProps) => {
               </linearGradient>
             </defs>
 
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="rgba(255, 255, 255, 0.4)"
+              horizontal={true}
+              vertical={false}
+            />
+
             <XAxis
               dataKey="date"
               stroke="rgba(255, 255, 255, 0.1)"
@@ -138,12 +146,6 @@ const ReliabilityChart = ({ chartData }: ReliabilityChartProps) => {
             />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
-
-      {/* Scale indicators */}
-      <div className="flex justify-between text-[10px] text-white/30 mt-2 px-10">
-        <span>Low reliability</span>
-        <span>High reliability</span>
       </div>
     </div>
   );

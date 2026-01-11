@@ -12,6 +12,7 @@ import DataInfo from "./DataInfo";
 import Smoothing from "./Smoothing";
 import FeatureSelection from "./FeatureSelection";
 import ReliabilityChart from "./ReliabilityChart";
+import TimeRangeSelector from "./TimeRangeSelector";
 
 interface DashboardChartProps {
   data: ChartDataPoint[];
@@ -21,6 +22,9 @@ export default function DashboardChart({ data }: DashboardChartProps) {
   const [selectedFeature, setSelectedFeature] =
     useState<MusicalFeature>("avg_energy");
   const [smoothing, setSmoothing] = useState<number>(10);
+  // Use -1 as sentinel to indicate "use full range"
+  const [timeRangeStart, setTimeRangeStart] = useState<number>(0);
+  const [timeRangeEnd, setTimeRangeEnd] = useState<number>(-1);
 
   const applySmoothingToData = useCallback(
     (data: ChartDataPoint[], windowSize: number): ChartDataPoint[] => {
@@ -51,8 +55,8 @@ export default function DashboardChart({ data }: DashboardChartProps) {
     [selectedFeature]
   );
 
-  const { toneRange, featureRange, chartData } = useMemo(() => {
-    // Filter to only show data up to the last date with musical features
+  // Filter data to only include points up to the last date with musical features
+  const filteredData = useMemo(() => {
     const hasMusicalFeatures = (point: ChartDataPoint): boolean => {
       const featureKeys: (keyof ChartDataPoint)[] = [
         "avg_tempo",
@@ -73,12 +77,41 @@ export default function DashboardChart({ data }: DashboardChartProps) {
     };
 
     const lastPointWithFeatures = [...data].reverse().find(hasMusicalFeatures);
-    const filteredData = lastPointWithFeatures
+    return lastPointWithFeatures
       ? data.filter((d) => d.date <= lastPointWithFeatures.date)
       : data;
+  }, [data]);
+
+  // Compute effective time range (use full range when timeRangeEnd is -1)
+  const effectiveTimeRangeEnd =
+    timeRangeEnd === -1 ? filteredData.length - 1 : timeRangeEnd;
+
+  // Get date labels for the time range selector
+  const dateLabels = useMemo(() => {
+    return filteredData.map((point) =>
+      new Date(point.date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "2-digit",
+      })
+    );
+  }, [filteredData]);
+
+  // Handle time range change
+  const handleTimeRangeChange = useCallback((start: number, end: number) => {
+    setTimeRangeStart(start);
+    setTimeRangeEnd(end);
+  }, []);
+
+  const { toneRange, featureRange, chartData } = useMemo(() => {
+    // Apply time range filter
+    const timeFilteredData = filteredData.slice(
+      timeRangeStart,
+      effectiveTimeRangeEnd + 1
+    );
 
     // Calculate news tone range
-    const toneValues = filteredData
+    const toneValues = timeFilteredData
       .map((d) => d.average_tone)
       .filter((v) => v !== null) as number[];
     const toneMin = Math.min(...toneValues);
@@ -86,7 +119,7 @@ export default function DashboardChart({ data }: DashboardChartProps) {
     const tonePadding = (toneMax - toneMin) * 0.1;
 
     // Calculate selected feature range
-    const featureValues = filteredData
+    const featureValues = timeFilteredData
       .map((d) => d[selectedFeature])
       .filter((v) => v !== null && v !== undefined) as number[];
     const featureMin = Math.min(...featureValues);
@@ -94,7 +127,7 @@ export default function DashboardChart({ data }: DashboardChartProps) {
     const featurePadding = (featureMax - featureMin) * 0.1;
 
     // Prepare chart data
-    const smoothedData = applySmoothingToData(filteredData, smoothing);
+    const smoothedData = applySmoothingToData(timeFilteredData, smoothing);
     const chartData = smoothedData.map((point) => ({
       date: new Date(point.date).toLocaleDateString("en-US", {
         month: "short",
@@ -116,7 +149,14 @@ export default function DashboardChart({ data }: DashboardChartProps) {
       },
       chartData,
     };
-  }, [applySmoothingToData, data, selectedFeature, smoothing]);
+  }, [
+    applySmoothingToData,
+    filteredData,
+    selectedFeature,
+    smoothing,
+    timeRangeStart,
+    effectiveTimeRangeEnd,
+  ]);
 
   const selectedFeatureConfig = MUSICAL_FEATURES.find(
     (f) => f.key === selectedFeature
@@ -127,7 +167,7 @@ export default function DashboardChart({ data }: DashboardChartProps) {
       {/* Main Layout: Grid with Sidebar + Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] xl:grid-cols-[320px_1fr] gap-6">
         {/* Left Sidebar - Feature Selection (order-2 on mobile, order-1 on desktop) */}
-        <div className="order-2 lg:order-1 lg:row-span-2">
+        <div className="order-2 lg:order-1 lg:row-span-3">
           <div className="glass-card p-6 h-full">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-linear-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center">
@@ -175,8 +215,19 @@ export default function DashboardChart({ data }: DashboardChartProps) {
           </div>
         </div>
 
-        {/* Reliability Chart (order-3 on both mobile and desktop) */}
+        {/* Time Range Selector (order-3 on both mobile and desktop) */}
         <div className="order-3">
+          <TimeRangeSelector
+            totalDataPoints={filteredData.length}
+            startIndex={timeRangeStart}
+            endIndex={effectiveTimeRangeEnd}
+            onRangeChange={handleTimeRangeChange}
+            dateLabels={dateLabels}
+          />
+        </div>
+
+        {/* Reliability Chart (order-4 on both mobile and desktop) */}
+        <div className="order-4">
           <ReliabilityChart chartData={chartData} />
         </div>
       </div>
