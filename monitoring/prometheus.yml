@@ -1,0 +1,70 @@
+# Prometheus configuration for MoodWave monitoring
+global:
+  scrape_interval: 15s # How often to scrape targets
+  evaluation_interval: 15s # How often to evaluate rules
+  scrape_timeout: 10s # Timeout for each scrape
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself (meta-monitoring)
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Kafka metrics via JMX Exporter
+  - job_name: "kafka"
+    static_configs:
+      - targets: ["kafka:7071"]
+        labels:
+          service: "kafka"
+          component: "message-broker"
+
+  # Zookeeper metrics via JMX Exporter (if we add it)
+  - job_name: "zookeeper"
+    static_configs:
+      - targets: ["zookeeper:7072"]
+        labels:
+          service: "zookeeper"
+          component: "coordination"
+
+  # Sandbox News Producer (Python metrics)
+  - job_name: "sandbox-news-producer"
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+        labels:
+          service: "producer"
+          component: "news"
+          type: "sandbox"
+
+  # Sandbox Track Producer (Python metrics)
+  - job_name: "sandbox-track-producer"
+    static_configs:
+      - targets: ["host.docker.internal:8001"]
+        labels:
+          service: "producer"
+          component: "tracks"
+          type: "sandbox"
+
+  # Database metrics exporter
+  - job_name: "database-metrics"
+    static_configs:
+      - targets: ["host.docker.internal:8002"]
+        labels:
+          service: "database"
+          component: "supabase"
+
+  # Spark Consumer (optional - we'll try to enable this)
+  - job_name: "spark-consumer"
+    static_configs:
+      - targets: ["spark-consumer:4040"]
+        labels:
+          service: "spark"
+          component: "consumer"
+    # Spark might not always be running, so don't fail if unreachable
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: spark-consumer:4040

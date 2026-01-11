@@ -17,6 +17,7 @@ import os
 import yaml
 import requests
 import random
+from prometheus_client import start_http_server, Gauge, Counter, Info
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -88,6 +89,64 @@ class SandboxTrackProducer:
         
         # Logging setup
         os.makedirs('logs', exist_ok=True)
+        
+        # === ADD THESE PROMETHEUS METRICS ===
+        # Simulation progress
+        self.simulation_day_gauge = Gauge(
+            'sandbox_track_simulation_day',
+            'Current simulation day number'
+        )
+        self.simulation_date_info = Info(
+            'sandbox_track_simulation_date',
+            'Current simulation date'
+        )
+        
+        # Chart metrics
+        self.charts_fetched = Counter(
+            'sandbox_track_charts_fetched_total',
+            'Total charts fetched from database'
+        )
+        self.tracks_in_chart = Gauge(
+            'sandbox_track_tracks_in_chart',
+            'Number of tracks in current chart'
+        )
+        
+        # Feature fetching metrics
+        self.features_needed = Gauge(
+            'sandbox_track_features_needed',
+            'Number of tracks needing features'
+        )
+        self.features_exist = Gauge(
+            'sandbox_track_features_exist',
+            'Number of tracks with existing features'
+        )
+        self.api_calls_total = Counter(
+            'sandbox_track_api_calls_total',
+            'Total fake API calls made'
+        )
+        self.api_calls_success = Counter(
+            'sandbox_track_api_calls_success',
+            'Successful fake API calls'
+        )
+        self.api_calls_failed = Counter(
+            'sandbox_track_api_calls_failed',
+            'Failed fake API calls'
+        )
+        self.features_timeout = Counter(
+            'sandbox_track_features_timeout_total',
+            'Features that timed out (not fetched in time window)'
+        )
+        
+        # Publishing metrics
+        self.charts_published = Counter(
+            'sandbox_track_charts_published_total',
+            'Total chart messages published to Kafka'
+        )
+        self.features_published = Counter(
+            'sandbox_track_features_published_total',
+            'Total feature messages published to Kafka'
+        )
+        # === END OF METRICS ===
         
         print("=" * 60)
         print("SANDBOX TRACK PRODUCER INITIALIZED")
@@ -193,6 +252,9 @@ class SandboxTrackProducer:
         Simulate API call by querying ORIGINAL database.
         Returns (features_dict, success, reason)
         """
+        # Increment API call counter
+        self.api_calls_total.inc()
+        
         # First, check if track exists in ORIGINAL database
         try:
             response = self.original_supabase.table(self.track_features_table)\
@@ -201,11 +263,13 @@ class SandboxTrackProducer:
                 .execute()
             if not response.data:
                 # Track doesn't exist - skip immediately (no retry)
+                self.api_calls_failed.inc()
                 return None, False, "not_found"
             
             track_features = response.data[0]
             
         except Exception as e:
+            self.api_calls_failed.inc()
             return None, False, f"query_error: {e}"
         
         # Simulate API delay
@@ -220,13 +284,16 @@ class SandboxTrackProducer:
         elif attempt == 3:
             success_rate = 0.2  # 80% fail
         else:
+            self.api_calls_failed.inc()
             return None, False, "max_retries"
         
         if random.random() > success_rate:
             # Simulated failure
+            self.api_calls_failed.inc()
             return None, False, "simulated_error"
         
         # Success - return the features
+        self.api_calls_success.inc()
         return track_features, True, "success"
     
     def fetch_features_with_retry(self, track: dict, date_str: str) -> dict | None:
@@ -297,6 +364,9 @@ class SandboxTrackProducer:
         }
         self.producer.send(self.features_topic, value=message)
         self.producer.flush()
+        
+        # Track published feature
+        self.features_published.inc()
     
     # ==================== LOGGING ====================
     
@@ -310,6 +380,9 @@ class SandboxTrackProducer:
     def log_timeout_feature(self, track: dict, date_str: str):
         """Log timeout feature to logs/timeout_features_YYYYMMDD.log"""
         log_file = f"logs/timeout_features_{date_str.replace('-', '')}.log"
+        
+        # Track timeout metric
+        self.features_timeout.inc()
         
         with open(log_file, 'a') as f:
             f.write(f"{date_str},{track.get('track_id')},{track.get('track_name')},{track.get('artists')},time_exceeded\n")
@@ -329,6 +402,10 @@ class SandboxTrackProducer:
             print(f"    No chart data for {date_str}")
             return
         
+        # Track chart metrics
+        self.charts_fetched.inc()
+        self.tracks_in_chart.set(len(chart_data))
+        
         # 2. Publish charts immediately to Kafka
         self.publish_charts(chart_data, date_str)
         
@@ -345,6 +422,10 @@ class SandboxTrackProducer:
             track for track in chart_data
             if track.get("track_id") and track["track_id"] not in existing_song_ids
         ]
+
+        # Track feature metrics
+        self.features_exist.set(len(tracks_with_existing_features))
+        self.features_needed.set(len(tracks_needing_features))
 
         print(f"    Songs with existing features: {len(tracks_with_existing_features)}")
         print(f"    Songs needing features: {len(tracks_needing_features)}")
@@ -388,12 +469,24 @@ class SandboxTrackProducer:
         """Main loop - process one day per simulation interval"""
         print("\nStarting sandbox simulation...\n")
         
+        # Start Prometheus metrics server on port 8001
+        print("Starting Prometheus metrics server on port 8001...")
+        start_http_server(8001)
+        print("Metrics available at http://localhost:8001/metrics\n")
+        
         last_processed_day = -1
         
         while True:
             try:
                 # Calculate current simulation day (independent, deterministic)
                 current_date, days_elapsed = self.calculate_current_simulation_day()
+                
+                # Update simulation progress metrics
+                self.simulation_day_gauge.set(days_elapsed)
+                self.simulation_date_info.info({
+                    'date': str(current_date),
+                    'days_elapsed': str(days_elapsed)
+                })
                 
                 # Only process if we've moved to a new day
                 if days_elapsed != last_processed_day:

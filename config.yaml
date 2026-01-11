@@ -33,7 +33,7 @@ consumer:
 sandbox:
   enabled: true
   start_date: "2020-01-02"
-  simulation_interval_seconds: 120
+  simulation_interval_seconds: 30
   api_delay_range_seconds: [0.1, 0.5]
   api_error_probability: 0.45
   consumer_trigger_interval_seconds: 60

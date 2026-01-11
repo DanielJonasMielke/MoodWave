@@ -13,6 +13,7 @@ import os
 import yaml
 from gdeltdoc import GdeltDoc, Filters
 from dotenv import load_dotenv
+from prometheus_client import start_http_server, Gauge, Counter, Info
 
 load_dotenv()
 
@@ -53,6 +54,42 @@ class SandboxNewsProducer:
         )
         self.topic = self.config['kafka']['news_topic']
         
+        # === PROMETHEUS METRICS ===
+        # Simulation progress
+        self.simulation_day_gauge = Gauge(
+            'sandbox_news_simulation_day', 
+            'Current simulation day number'
+        )
+        self.simulation_date_info = Info(
+            'sandbox_news_simulation_date',
+            'Current simulation date'
+        )
+        
+        # API call counters
+        self.api_calls_total = Counter(
+            'sandbox_news_api_calls_total',
+            'Total GDELT API calls made'
+        )
+        self.api_calls_success = Counter(
+            'sandbox_news_api_calls_success',
+            'Successful GDELT API calls'
+        )
+        self.api_calls_failed = Counter(
+            'sandbox_news_api_calls_failed',
+            'Failed GDELT API calls'
+        )
+        
+        # Processing metrics
+        self.last_tone_value = Gauge(
+            'sandbox_news_last_tone_value',
+            'Last fetched tone value'
+        )
+        self.messages_published = Counter(
+            'sandbox_news_messages_published_total',
+            'Total messages published to Kafka'
+        )
+        # === END OF METRICS ===
+        
         print("=" * 60)
         print("SANDBOX NEWS PRODUCER INITIALIZED")
         print("=" * 60)
@@ -88,19 +125,29 @@ class SandboxNewsProducer:
             language=self.language
         )
         
+        # Increment API call counter
+        self.api_calls_total.inc()
+        
         try:
             timeline = gd.timeline_search("timelinetone", f)
             
             if not timeline.empty:
                 avg_tone = timeline['Average Tone'].mean()
                 print(f"    {date_str}: tone = {avg_tone:.4f}")
+                
+                # Track success and value
+                self.api_calls_success.inc()
+                self.last_tone_value.set(avg_tone)
+                
                 return avg_tone
             else:
                 print(f"    {date_str}: No data")
+                self.api_calls_failed.inc()
                 return None
                 
         except Exception as e:
             print(f"    {date_str}: Error - {e}")
+            self.api_calls_failed.inc()
             return None
     
     def publish_tone(self, date_obj: date, avg_tone: float):
@@ -115,11 +162,20 @@ class SandboxNewsProducer:
         
         self.producer.send(self.topic, value=message)
         self.producer.flush()
+        
+        # Track published message
+        self.messages_published.inc()
+        
         print(f"-> Published to Kafka: {date_str}")
     
     def run(self):
         """Main loop - process one day per simulation interval"""
         print("\nStarting sandbox simulation...\n")
+        
+        # Start Prometheus metrics server on port 8000
+        print("Starting Prometheus metrics server on port 8000...")
+        start_http_server(8000)
+        print("Metrics available at http://localhost:8000/metrics\n")
         
         last_processed_day = -1
         
@@ -127,6 +183,13 @@ class SandboxNewsProducer:
             try:
                 # Calculate current simulation day (independent, deterministic)
                 current_date, days_elapsed = self.calculate_current_simulation_day()
+                
+                # Update simulation progress metrics
+                self.simulation_day_gauge.set(days_elapsed)
+                self.simulation_date_info.info({
+                    'date': str(current_date),
+                    'days_elapsed': str(days_elapsed)
+                })
                 
                 # Only process if we've moved to a new day
                 if days_elapsed != last_processed_day:
