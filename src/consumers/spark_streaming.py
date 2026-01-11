@@ -293,8 +293,9 @@ def upsert_charts_batch(batch_df: DataFrame, batch_id: int, supabase: Client):
     rows = tracks_df.collect()
     print(f"[CHARTS] Batch {batch_id}: Writing {len(rows)} tracks to spotify_regional_charts")
     
-    for row in rows:
-        record = {
+    # Build list of all records for batch upsert
+    records = [
+        {
             "rank": row["rank"],
             "previous_rank": row["previous_rank"],
             "peak_rank": row["peak_rank"],
@@ -308,13 +309,16 @@ def upsert_charts_batch(batch_df: DataFrame, batch_id: int, supabase: Client):
             "chart_date": row["chart_date"],
             "chart_type": row["chart_type"]
         }
-        try:
-            supabase.table("spotify_regional_charts").upsert(
-                record,
-                on_conflict="track_uri,chart_date"
-            ).execute()
-        except Exception as e:
-            print(f"[CHARTS] Error upserting record: {e}")
+        for row in rows
+    ]
+    
+    try:
+        supabase.table("spotify_regional_charts").upsert(
+            records,
+            on_conflict="track_uri,chart_date"
+        ).execute()
+    except Exception as e:
+        print(f"[CHARTS] Error upserting batch: {e}")
 
 
 def upsert_features_batch(batch_df: DataFrame, batch_id: int, supabase: Client):
@@ -328,8 +332,9 @@ def upsert_features_batch(batch_df: DataFrame, batch_id: int, supabase: Client):
     rows = batch_df.collect()
     print(f"[FEATURES] Batch {batch_id}: Writing {len(rows)} records to track_features")
     
-    for row in rows:
-        record = {
+    # Build list of all records for batch upsert
+    records = [
+        {
             "track_id": row["track_id"],
             "track_name": row["track_name"],
             "artists": row["artists"],
@@ -350,13 +355,16 @@ def upsert_features_batch(batch_df: DataFrame, batch_id: int, supabase: Client):
             "mode": row["mode"],
             "camelot": row["camelot"]
         }
-        try:
-            supabase.table("track_features").upsert(
-                record,
-                on_conflict="track_id"
-            ).execute()
-        except Exception as e:
-            print(f"[FEATURES] Error upserting record: {e}")
+        for row in rows
+    ]
+    
+    try:
+        supabase.table("track_features").upsert(
+            records,
+            on_conflict="track_id"
+        ).execute()
+    except Exception as e:
+        print(f"[FEATURES] Error upserting batch: {e}")
 
 
 def upsert_daily_avg_batch(batch_df: DataFrame, batch_id: int, supabase: Client):

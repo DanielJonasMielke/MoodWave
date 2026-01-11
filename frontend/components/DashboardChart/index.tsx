@@ -22,7 +22,7 @@ import TimeRangeSelector from "./TimeRangeSelector";
 // 0.7 = strong correlation boost
 // 1 = musical feature fully mirrors news tone pattern
 // =============================================================================
-const CORRELATION_BOOST: number = 0.4;
+const CORRELATION_BOOST: number = 0.1;
 
 interface DashboardChartProps {
   data: ChartDataPoint[];
