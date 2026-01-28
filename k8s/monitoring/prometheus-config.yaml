@@ -1,0 +1,137 @@
+# Prometheus ConfigMap with scrape configs for all pipeline components
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: default
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: 'moodwave-k3s'
+        environment: 'production'
+
+    scrape_configs:
+      # Prometheus itself
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # Kube State Metrics - Kubernetes cluster state
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics:8080']
+
+      # Node Exporter - System level metrics
+      - job_name: 'node-exporter'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: node-exporter
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+          - source_labels: [__meta_kubernetes_pod_ip]
+            target_label: __address__
+            replacement: $1:9100
+
+      # Kubelet cAdvisor - Container metrics
+      - job_name: 'kubernetes-cadvisor'
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+
+      # Kubernetes API Server
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+
+      # Kafka Exporter - Consumer lag and topic metrics
+      - job_name: 'kafka-exporter'
+        static_configs:
+          - targets: ['kafka-exporter:9308']
+
+      # Zookeeper Metrics (disabled - not exposing Prometheus metrics)
+      # - job_name: 'zookeeper'
+      #   static_configs:
+      #     - targets: ['zookeeper-service:7000']
+
+      # Spark Consumer Metrics (disabled - endpoint returns invalid format)
+      # - job_name: 'spark-consumer'
+      #   static_configs:
+      #     - targets: ['spark-metrics-service:4040']
+      #   metrics_path: '/metrics/prometheus'
+
+      # Producer Metrics (matching docker-compose setup)
+      - job_name: 'sandbox-news-producer'
+        static_configs:
+          - targets: ['news-producer-metrics:8000']
+            labels:
+              service: 'producer'
+              component: 'news'
+              type: 'sandbox'
+
+      - job_name: 'sandbox-track-producer'
+        static_configs:
+          - targets: ['track-producer-metrics:8001']
+            labels:
+              service: 'producer'
+              component: 'tracks'
+              type: 'sandbox'
+      
+      # Database metrics exporter (disabled - not implemented yet)
+      # - job_name: 'database-metrics'
+      #   static_configs:
+      #     - targets: ['database-metrics:8002']
+      #       labels:
+      #         service: 'database'
+      #         component: 'supabase'
+
+      # Kubernetes Pods (Auto-discovery)
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: kubernetes_pod_name
+          - source_labels: [__meta_kubernetes_pod_label_component]
+            target_label: component

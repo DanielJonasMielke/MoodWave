@@ -1,0 +1,52 @@
+# MoodWave Application Configuration ConfigMap
+# Contains the main config.yaml for all application components
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moodwave-config
+  namespace: default
+  labels:
+    app: moodwave
+data:
+  config.yaml: |
+    # MoodWave Kubernetes Configuration
+    kafka:
+      # Use Kubernetes service name for internal communication
+      bootstrap_servers: "kafka-service:9092"
+      news_topic: "news_tones"
+      charts_topic: "daily_charts"
+      features_topic: "musical_features"
+
+    producer:
+      fetch_interval_seconds: 30
+      start_date: "2020-01-01"
+
+    gdelt:
+      country: "GM"
+      language: "GERMAN"
+
+    spotify:
+      chart_type: "regional-de-daily"
+
+    rapidapi:
+      host: "track-analysis.p.rapidapi.com"
+
+    supabase:
+      news_tones_table: "gdelt_daily_tone"
+      regional_charts_table: "spotify_regional_charts"
+      viral_charts_table: "spotify_viral_charts"
+      track_features_table: "track_features"
+      track_features_daily_avg_table: "track_features_daily_avg"
+
+    consumer:
+      trigger_interval_seconds: 300
+      checkpoint_location: "/tmp/spark_checkpoints"
+
+    sandbox:
+      enabled: true
+      start_date: "2020-01-01"
+      simulation_interval_seconds: 180
+      api_delay_range_seconds: [0.01, 0.2]
+      api_error_probability: 0.30
+      consumer_trigger_interval_seconds: 90

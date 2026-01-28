@@ -1,0 +1,58 @@
+# Kafka JMX Exporter for Kafka broker metrics
+# This runs as a sidecar in the Kafka pod
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-jmx-config
+  namespace: default
+data:
+  jmx-exporter-config.yml: |
+    lowercaseOutputName: true
+    lowercaseOutputLabelNames: true
+    rules:
+      # Broker metrics
+      - pattern: kafka.server<type=(.+), name=(.+)><>Value
+        name: kafka_server_$1_$2
+        type: GAUGE
+      
+      # Request metrics
+      - pattern: kafka.network<type=RequestMetrics, name=(.+), request=(.+)><>Count
+        name: kafka_network_request_$1
+        labels:
+          request: "$2"
+        type: COUNTER
+      
+      # Topic metrics
+      - pattern: kafka.log<type=Log, name=(.+), topic=(.+), partition=(.+)><>Value
+        name: kafka_log_$1
+        labels:
+          topic: "$2"
+          partition: "$3"
+        type: GAUGE
+      
+      # Consumer lag
+      - pattern: kafka.consumer<type=consumer-fetch-manager-metrics, client-id=(.+), topic=(.+), partition=(.+)><>(.+)
+        name: kafka_consumer_$4
+        labels:
+          client_id: "$1"
+          topic: "$2"
+          partition: "$3"
+        type: GAUGE
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-jmx-exporter
+  namespace: default
+  labels:
+    app: moodwave
+    component: kafka-jmx-exporter
+spec:
+  ports:
+    - port: 5556
+      targetPort: 5556
+      name: metrics
+  selector:
+    app: moodwave
+    component: kafka

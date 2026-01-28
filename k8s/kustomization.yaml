@@ -1,0 +1,39 @@
+# Kustomization file for deploying all MoodWave resources
+# Usage: kubectl apply -k k8s/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: default
+
+# Labels to add to all resources
+commonLabels:
+  project: moodwave
+  environment: demo
+
+resources:
+  # Secrets and ConfigMaps (apply first)
+  - secrets/moodwave-secrets.yaml
+  - secrets/kafka-ui-auth.yaml
+  - configmaps/app-config.yaml
+  - configmaps/kafka-config.yaml
+  
+  # Kafka infrastructure
+  - kafka/zookeeper.yaml
+  - kafka/kafka.yaml
+  - kafka/kafka-ui.yaml
+  - kafka/kafka-ui-ingress.yaml
+  
+  # Application workloads
+  - spark/spark-consumer.yaml
+  - producers/news-producer.yaml
+  - producers/track-producer.yaml
+  
+  # Monitoring stack
+  # - monitoring/prometheus-config.yaml
+  # - monitoring/prometheus.yaml
+  # - monitoring/grafana-datasources.yaml
+  # - monitoring/grafana.yaml
+  # - monitoring/kafka-jmx-exporter.yaml
+  # - monitoring/kafka-exporter.yaml
+  # - monitoring/node-exporter.yaml

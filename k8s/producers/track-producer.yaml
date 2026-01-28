@@ -1,0 +1,117 @@
+# Track Producer Deployment
+# Fetches Spotify charts and track features, publishes to Kafka
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: track-producer
+  namespace: default
+  labels:
+    app: moodwave
+    component: track-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moodwave
+      component: track-producer
+  template:
+    metadata:
+      labels:
+        app: moodwave
+        component: track-producer
+    spec:
+      containers:
+        - name: track-producer
+          image: joernjj/moodwave-producer:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8001
+              name: metrics
+              protocol: TCP
+          env:
+            # Force Python unbuffered output for logging
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            # Producer type selection (sandbox_track for testing with old data)
+            - name: PRODUCER_TYPE
+              value: "sandbox_track"
+
+            # Kafka configuration
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-service:9092"
+
+            # Config file path
+            - name: CONFIG_PATH
+              value: "/app/config.yaml"
+
+            # Supabase credentials from secrets
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: moodwave-secrets
+                  key: SUPABASE_URL
+            - name: SUPABASE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: moodwave-secrets
+                  key: SUPABASE_KEY
+
+            # Sandbox Supabase (if using sandbox mode)
+            - name: SANDBOX_SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: moodwave-secrets
+                  key: SANDBOX_SUPABASE_URL
+            - name: SANDBOX_SUPABASE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: moodwave-secrets
+                  key: SANDBOX_SUPABASE_KEY
+
+            # Spotify bearer token
+            - name: SPOTIFY_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: moodwave-secrets
+                  key: SPOTIFY_BEARER_TOKEN
+
+            # RapidAPI key for track analysis
+            - name: RAPIDAPI_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: moodwave-secrets
+                  key: RAPIDAPI_KEY
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+      volumes:
+        - name: config-volume
+          configMap:
+            name: moodwave-config
+
+      # Ensure Kafka is ready before starting producer
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Kafka to be ready..."
+              until nc -z kafka-service 9092; do
+                echo "Kafka not ready, waiting..."
+                sleep 5
+              done
+              echo "Kafka is ready!"

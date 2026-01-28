@@ -1,0 +1,57 @@
+# Kafka Exporter for consumer lag and topic metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-exporter
+  namespace: default
+  labels:
+    app: moodwave
+    component: kafka-exporter
+spec:
+  ports:
+    - port: 9308
+      targetPort: 9308
+      name: metrics
+  selector:
+    app: moodwave
+    component: kafka-exporter
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-exporter
+  namespace: default
+  labels:
+    app: moodwave
+    component: kafka-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moodwave
+      component: kafka-exporter
+  template:
+    metadata:
+      labels:
+        app: moodwave
+        component: kafka-exporter
+    spec:
+      containers:
+        - name: kafka-exporter
+          image: danielqsj/kafka-exporter:v1.7.0
+          args:
+            - --kafka.server=kafka-service:9092
+            - --web.listen-address=:9308
+            - --topic.filter=.*
+            - --group.filter=.*
+          ports:
+            - containerPort: 9308
+              name: metrics
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

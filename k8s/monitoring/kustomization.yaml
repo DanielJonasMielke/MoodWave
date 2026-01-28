@@ -1,0 +1,19 @@
+# Kustomization for monitoring stack
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: default
+
+resources:
+  - namespace.yaml
+  - metrics-server.yaml
+  - prometheus-config.yaml
+  - prometheus.yaml
+  - grafana-datasources.yaml
+  - grafana-dashboards-configmap.yaml
+  - grafana-dashboards-data.yaml
+  - grafana.yaml
+  - kube-state-metrics.yaml
+  - kafka-jmx-exporter.yaml
+  - kafka-exporter.yaml
+  - node-exporter.yaml

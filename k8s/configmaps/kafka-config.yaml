@@ -1,0 +1,39 @@
+# Kafka Configuration ConfigMap
+# Configuration for Kafka broker and Zookeeper
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+  namespace: default
+  labels:
+    app: moodwave
+    component: kafka
+data:
+  # Zookeeper configuration
+  ZOOKEEPER_CLIENT_PORT: "2181"
+  ZOOKEEPER_TICK_TIME: "2000"
+  ZOOKEEPER_SYNC_LIMIT: "2"
+  ZOOKEEPER_INIT_LIMIT: "5"
+  
+  # Kafka broker configuration
+  KAFKA_BROKER_ID: "1"
+  KAFKA_ZOOKEEPER_CONNECT: "zookeeper-service:2181"
+  KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092"
+  KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-service:9092"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT"
+  KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+  KAFKA_NUM_PARTITIONS: "3"
+  KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
+  
+  # Resource optimization for demo (smaller heap sizes)
+  KAFKA_HEAP_OPTS: "-Xmx512M -Xms256M"
+  
+  # Log retention (keep logs small for demo)
+  KAFKA_LOG_RETENTION_HOURS: "24"
+  KAFKA_LOG_SEGMENT_BYTES: "1073741824"
+  KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: "300000"

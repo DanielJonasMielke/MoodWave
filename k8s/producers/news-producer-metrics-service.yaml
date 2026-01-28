@@ -1,0 +1,23 @@
+# News Producer Metrics Service
+# Service for Prometheus to scrape producer metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: news-producer-metrics
+  namespace: default
+  labels:
+    app: moodwave
+    component: news-producer
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: metrics
+  selector:
+    app: moodwave
+    component: news-producer

@@ -1,0 +1,20 @@
+# Grafana Dashboard Provisioning ConfigMap
+# This will auto-load dashboards into Grafana on startup
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: default
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'MoodWave Dashboards'
+        orgId: 1
+        folder: 'MoodWave'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards
